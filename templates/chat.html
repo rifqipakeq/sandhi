@@ -274,19 +274,49 @@
                             Ekstrak Pesan dari Gambar
                         </button>
                     `;
+                // } else if (data.type === 'file') {
+                //     // Tampilkan link download file DES
+                //     const displayName = data.original_filename || data.content;
+                //     contentHTML = `
+                //         <p class="text-xs opacity-70">File Terenkripsi (DES):</p>
+                //         <p class="font-mono text-sm">${data.content}</p>
+                //         <a href="/decrypt/download_decrypted_file?filename=${data.content}" 
+                //         class="mt-1 text-xs text-blue-200 hover:underline" 
+                //         target="_blank" download>
+                //             Download & Dekripsi File
+                //         </a>
+                //     `;
+                // }
                 } else if (data.type === 'file') {
-                    // Tampilkan link download file DES
-                    const displayName = data.original_filename || data.content;
-                    contentHTML = `
-                        <p class="text-xs opacity-70">File Terenkripsi (DES):</p>
-                        <p class="font-mono text-sm">${data.content}</p>
-                        <a href="/decrypt/download_decrypted_file?filename=${data.content}" 
-                        class="mt-1 text-xs text-blue-200 hover:underline" 
-                        target="_blank" download>
-                            Download & Dekripsi File
-                        </a>
+                const displayName = data.original_filename || data.content;
+                const encryptedFilename = data.content;
+                
+                // Cek apakah file ini adalah gambar berdasarkan ekstensi
+                const isImage = /\.(jpe?g|png|gif|bmp)$/i.test(displayName);
+                
+                let fileDisplayHTML = '';
+                if (isImage) {
+                    // Jika gambar, tampilkan <img> yang menunjuk ke endpoint dekripsi baru
+                    fileDisplayHTML = `
+                        <img src="/decrypt/view_file?filename=${encryptedFilename}" 
+                             alt="Encrypted Image" 
+                             class="max-w-[200px] rounded my-1 border border-gray-300">
                     `;
+                } else {
+                    // Jika bukan gambar, tampilkan nama filenya
+                    fileDisplayHTML = `<p class="font-mono text-sm">${displayName}</p>`;
                 }
+                
+                contentHTML = `
+                    <p class="text-xs opacity-70">File (Enkripsi DES):</p>
+                    ${fileDisplayHTML}
+                    <a href="/decrypt/download_decrypted_file?filename=${encryptedFilename}" 
+                       class="mt-1 text-xs text-blue-200 hover:underline" 
+                       target="_blank"> 
+                        Download & Dekripsi File
+                    </a>
+                `;
+            }
 
                 msgDiv.innerHTML = `
                     <div classclass="max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${bgColor}">

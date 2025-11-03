@@ -6,6 +6,7 @@ import os
 from encryption.des_file import encrypt_file_des
 from encryption.dwt_stego import stego_embed_dwt
 from encryption.affine_xor import encrypt_text_super
+from app import socketio, clients
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -25,13 +26,13 @@ def chat_room():
 def upload_file():
     """
     Menangani upload file (gambar stego atau file DES).
-    Ini BUKAN WebSocket, tapi rute HTTP standar.
+    (VERSI PERBAIKAN FINAL)
     """
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
     file = request.files['file']
-    upload_type = request.form.get('type') # 'image' atau 'file'
+    upload_type = request.form.get('type') # 'image' (Stego) atau 'file' (DES)
     recipient_id = request.form.get('recipient_id')
     
     if file.filename == '':
@@ -40,9 +41,10 @@ def upload_file():
     if not recipient_id:
         return jsonify({'error': 'No recipient'}), 400
 
+    # Ini adalah nama file asli, misal: 'query_orderan.png'
     filename = secure_filename(file.filename)
     raw_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    file.save(raw_path) # Simpan file asli sementara
+    file.save(raw_path)
     
     encrypted_path = ""
     message_type = ""
@@ -51,8 +53,10 @@ def upload_file():
         if upload_type == 'image':
             # Ini untuk DWT Steganography
             message_to_hide = request.form.get('stego_message', 'Pesan rahasia')
+            # encrypted_path = 'uploads/query_orderan_stego.png'
             encrypted_path = stego_embed_dwt(raw_path, message_to_hide)
             message_type = 'image'
+            # Kita biarkan file asli (raw_path) agar bisa ditampilkan
             
         elif upload_type == 'file':
             # Ini untuk Enkripsi DES
@@ -60,40 +64,48 @@ def upload_file():
                 file_data = f.read()
             encrypted_data = encrypt_file_des(file_data)
             
-            encrypted_path = raw_path # Simpan file terenkripsi
+            # encrypted_path = 'uploads/query_orderan.png.des'
+            encrypted_path = raw_path + ".des"
             with open(encrypted_path, 'wb') as f:
                 f.write(encrypted_data)
             message_type = 'file'
+            
+            # Hapus file asli (raw_path) karena kita hanya perlu versi .des
+            os.remove(raw_path)
         
         else:
+            if os.path.exists(raw_path):
+                os.remove(raw_path)
             return jsonify({'error': 'Invalid upload type'}), 400
 
-        # Hapus file asli
-        os.remove(raw_path)
-
         if not encrypted_path:
+             if os.path.exists(raw_path):
+                os.remove(raw_path)
              return jsonify({'error': 'Encryption failed'}), 500
+
+        # Ini adalah nama file terenkripsi:
+        # misal: 'query_orderan_stego.png' ATAU 'query_orderan.png.des'
+        encrypted_filename = os.path.basename(encrypted_path)
 
         # Simpan path ke DB
         new_message = Message(
             sender_id=session['user_id'],
             receiver_id=recipient_id,
             message_type=message_type,
-            encrypted_content=os.path.basename(encrypted_path) # Hanya simpan nama file
+            encrypted_content=encrypted_filename, # <-- INI YANG BENAR
+            original_filename=filename            # <-- Nama file asli
         )
         db.session.add(new_message)
         db.session.commit()
         
-        # Kirim notifikasi via WebSocket (dijelaskan di chat_ws.py)
-        # Kita perlu mengimpor socketio, tapi itu bisa menyebabkan circular import.
-        # Cara lebih baik: panggil fungsi dari app.py
-        from app import socketio, clients
+        # Kirim notifikasi via WebSocket
         recipient_sid = clients.get(int(recipient_id))
         
         message_data = {
             'sender_username': session['username'],
             'type': message_type,
-            'content': os.path.basename(encrypted_path),
+            'content': encrypted_filename,      # <-- Nama file terenkripsi
+            'original_filename': filename,        # <-- Nama file asli
             'timestamp': new_message.timestamp.isoformat()
         }
         
@@ -106,12 +118,13 @@ def upload_file():
         if my_sid:
              socketio.emit('new_message', message_data, room=my_sid)
 
-        return jsonify({'status': 'success', 'path': os.path.basename(encrypted_path)})
+        return jsonify({'status': 'success', 'path': encrypted_filename})
 
     except Exception as e:
         # Hapus file asli jika gagal
         if os.path.exists(raw_path):
             os.remove(raw_path)
+        print(f"Upload Error: {e}") # Cetak error ke konsol server
         return jsonify({'error': str(e)}), 500
     
 @chat_bp.route('/uploads/<path:filename>')

@@ -22,6 +22,14 @@ def encrypt_blowfish(data: str) -> str:
         return ""
 
 def decrypt_blowfish(encrypted_data_b64: str) -> str:
+    """
+    Mendekripsi data Blowfish (CBC mode) dari database.
+    (Versi perbaikan: lebih tangguh)
+    """
+    if not encrypted_data_b64:
+        # Jika datanya kosong, kembalikan string yang jelas
+        return "Decryption Failed (Empty)" 
+
     try:
         encrypted_data = base64.b64decode(encrypted_data_b64)
         iv = encrypted_data[:Blowfish.block_size]
@@ -29,5 +37,8 @@ def decrypt_blowfish(encrypted_data_b64: str) -> str:
         cipher = Blowfish.new(BLOWFISH_KEY, Blowfish.MODE_CBC, iv)
         decrypted_data = unpad(cipher.decrypt(ct), Blowfish.block_size)
         return decrypted_data.decode('utf-8')
-    except (ValueError, KeyError, TypeError):
-        return "Decryption Blowfish Failed" # Gagal dekripsi (mungkin data korup/kunci salah)
+    except (ValueError, KeyError, TypeError, base64.binascii.Error) as e:
+        # Tangkap semua kemungkinan error dekripsi/padding/base64
+        # Ini akan menangani kasus di mana data adalah plaintext
+        print(f"Blowfish Decryption Error: {e}")
+        return "Decryption Failed (Data Corrupt)"
