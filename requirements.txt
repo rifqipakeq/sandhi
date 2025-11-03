@@ -1,0 +1,10 @@
+flask
+flask-socketio
+flask-sqlalchemy
+eventlet              
+pycryptodome          
+Pillow                
+pywavelets            
+numpy                 
+pyngrok               
+python-dotenv         

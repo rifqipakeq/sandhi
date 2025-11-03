@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}Secure Chat Room{% endblock %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden bg-gray-100" style="height: 95vh;">
+    <div class="w-1/3 border-r border-gray-300 bg-white overflow-y-auto">
+        <div class="p-4 border-b">
+            <h2 class="text-xl font-semibold">Pengguna</h2>
+            <p class="text-sm text-gray-600">Online: <span id="online-count">0</span></p>
+        </div>
+        <div id="user-list">
+            {% for user in users %}
+            <div id="user-{{ user.id }}" data-userid="{{ user.id }}" data-username="{{ user.username }}"
+                 class="flex items-center p-4 cursor-pointer hover:bg-gray-100 border-b user-item">
+                <div class="relative">
+                    <span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-gray-400 border-2 border-white user-status-indicator"></span>
+                    <img class="w-10 h-10 rounded-full" src="https://ui-avatars.com/api/?name={{ user.username }}&background=random" alt="{{ user.username }}">
+                </div>
+                <div class="ml-3">
+                    <p class="font-semibold">{{ user.username }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="absolute bottom-0 w-1/3 p-4 bg-gray-200 border-t">
+            <p class="font-semibold">Login sebagai: {{ current_user }}</p>
+            <a href="{{ url_for('auth.logout') }}" class="text-sm text-red-600 hover:underline">Logout</a>
+        </div>
+    </div>
+
+    <div class="flex flex-col w-2/3">
+        <div class="p-4 border-b bg-white shadow-sm">
+            <h2 id="chat-with-username" class="text-xl font-semibold">Pilih pengguna untuk memulai chat</h2>
+        </div>
+
+        <div id="message-box" class="flex-1 p-4 overflow-y-auto bg-gradient-to-br from-blue-50 to-purple-50">
+            <div class="text-center text-gray-500">Pilih pengguna di sebelah kiri.</div>
+        </div>
+
+        <div id="notification-bar" class="hidden p-2 text-sm text-center text-white bg-green-500"></div>
+
+        <div id="input-area" class="hidden p-4 bg-white border-t">
+            <form id="message-form" class="flex items-center">
+                <input id="message-input" type="text" placeholder="Ketik pesan terenkripsi..."
+                       class="flex-1 px-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit"
+                        class="px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-r-md hover:from-blue-600 hover:to-purple-700">
+                    Kirim Teks
+                </button>
+            </form>
+            <form id="upload-form" class="flex items-center mt-2 space-x-2">
+                <input type="file" id="file-input" class="flex-1 text-sm">
+                
+                <input type="text" id="stego-message" placeholder="Pesan untuk disembunyikan (opsional)" class="hidden px-2 py-1 text-sm border rounded">
+                
+                <button type="button" id="upload-image-btn"
+                        class="px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600">
+                    Upload Gambar (Stego)
+                </button>
+                <button type="button" id="upload-file-btn"
+                        class="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600">
+                    Upload File (DES)
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="decrypt-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
+    <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
+        <h3 class="text-lg font-semibold">Hasil Dekripsi</h3>
+        <p id="decrypt-result" class="mt-2 p-4 bg-gray-100 rounded min-h-[50px] whitespace-pre-wrap"></p>
+        <button id="close-modal-btn" class="w-full px-4 py-2 mt-4 text-white bg-gray-500 rounded hover:bg-gray-600">Tutup</button>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const socket = io();
+        const myUsername = "{{ current_user }}";
+        let activeChatUserID = null;
+        let activeChatUsername = null;
+
+        const userList = document.getElementById('user-list');
+        const messageBox = document.getElementById('message-box');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const chatWithUsername = document.getElementById('chat-with-username');
+        const inputArea = document.getElementById('input-area');
+        
+        // Form Upload
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+        const stegoMessageInput = document.getElementById('stego-message');
+        const uploadImageBtn = document.getElementById('upload-image-btn');
+        const uploadFileBtn = document.getElementById('upload-file-btn');
+        
+        // Notifikasi
+        const notificationBar = document.getElementById('notification-bar');
+        
+        // Modal
+        const decryptModal = document.getElementById('decrypt-modal');
+        const decryptResult = document.getElementById('decrypt-result');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // --- 1. Koneksi SocketIO ---
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('update_user_list', (data) => {
+            console.log('User list updated:', data.online_users);
+            const onlineUsers = data.online_users;
+            document.getElementById('online-count').textContent = onlineUsers.length;
+            
+            // Update indikator status
+            document.querySelectorAll('.user-item').forEach(item => {
+                const userId = parseInt(item.dataset.userid, 10);
+                const indicator = item.querySelector('.user-status-indicator');
+                if (onlineUsers.includes(userId)) {
+                    indicator.classList.remove('bg-gray-400');
+                    indicator.classList.add('bg-green-500'); // Online
+                } else {
+                    indicator.classList.remove('bg-green-500');
+                    indicator.classList.add('bg-gray-400'); // Offline
+                }
+            });
+        });
+
+        // --- 2. Memilih Pengguna untuk Chat ---
+        userList.addEventListener('click', (e) => {
+            const userItem = e.target.closest('.user-item');
+            if (userItem) {
+                activeChatUserID = userItem.dataset.userid;
+                activeChatUsername = userItem.dataset.username;
+                
+                chatWithUsername.textContent = `Chat dengan ${activeChatUsername}`;
+                inputArea.classList.remove('hidden');
+                messageBox.innerHTML = '<div class="text-center text-gray-500">Memuat riwayat chat...</div>';
+                
+                // Reset highlight
+                document.querySelectorAll('.user-item').forEach(item => item.classList.remove('bg-blue-100'));
+                userItem.classList.add('bg-blue-100');
+                
+                // Minta riwayat chat
+                socket.emit('request_chat_history', { other_user_id: activeChatUserID });
+            }
+        });
+
+        // --- 3. Menerima Riwayat Chat ---
+        socket.on('chat_history', (history) => {
+            messageBox.innerHTML = ''; // Hapus "memuat..."
+            history.forEach(msg => appendMessage(msg));
+            scrollToBottom();
+        });
+
+        // --- 4. Menerima Pesan Baru ---
+        socket.on('new_message', (data) => {
+            console.log('New message received:', data);
+            // Hanya tampilkan jika chat sedang aktif
+            const senderId = data.sender_username === myUsername ? activeChatUserID : null; // Logika ini perlu disesuaikan
+            
+            // Cara mudah: Cek jika pengirim atau penerima adalah kita, dan yang lain adalah user aktif
+            if ( (data.sender_username === myUsername && activeChatUsername !== null) || 
+                 (data.sender_username === activeChatUsername) ) 
+            {
+                appendMessage(data);
+                scrollToBottom();
+            } else {
+                showNotification(`Pesan baru dari ${data.sender_username}`, 'info');
+                // Tambahkan notifikasi visual ke daftar user
+                const userItem = document.getElementById(`user-${data.sender_id}`); // Ini perlu ID pengirim
+                if(userItem) userItem.classList.add('font-bold');
+            }
+        });
+
+        // --- 5. Mengirim Pesan Teks ---
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value;
+            if (!message || !activeChatUserID) return;
+
+            // Client HANYA mengirim data mentah
+            // Server akan mengenkripsi dan menyimpannya (sesuai /websocket/chat_ws.py)
+            socket.emit('send_message', {
+                recipient_id: activeChatUserID,
+                message: message
+            });
+            messageInput.value = '';
+        });
+        
+        // --- 6. Mengirim File/Gambar (Upload) ---
+        fileInput.addEventListener('change', () => {
+            // Tampilkan input stego jika file adalah gambar
+            const file = fileInput.files[0];
+            if (file && file.type.startsWith('image/')) {
+                stegoMessageInput.classList.remove('hidden');
+            } else {
+                stegoMessageInput.classList.add('hidden');
+            }
+        });
+        
+        uploadImageBtn.addEventListener('click', () => handleUpload('image'));
+        uploadFileBtn.addEventListener('click', () => handleUpload('file'));
+
+        function handleUpload(type) {
+            const file = fileInput.files[0];
+            if (!file || !activeChatUserID) {
+                alert('Pilih file dan penerima.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+            formData.append('recipient_id', activeChatUserID);
+            
+            if (type === 'image') {
+                formData.append('stego_message', stegoMessageInput.value || 'Pesan Rahasia');
+            }
+
+            fetch('/chat/upload_file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification(`File terenkripsi ${data.path} terkirim!`, 'success');
+                    // Pesan akan muncul via WebSocket (diterima dari server)
+                } else {
+                    showNotification(`Error: ${data.error}`, 'error');
+                }
+                // Reset form upload
+                uploadForm.reset();
+                stegoMessageInput.classList.add('hidden');
+            })
+            .catch(err => {
+                console.error('Upload error:', err);
+                showNotification('Upload Gagal.', 'error');
+            });
+        }
+
+        // --- 7. Fungsi Helper (Tampilan UI) ---
+        
+        function appendMessage(data) {
+            const isMe = data.sender_username === myUsername;
+            const align = isMe ? 'justify-end' : 'justify-start';
+            const bgColor = isMe ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-white text-gray-800 shadow-sm';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex ${align} mb-3`;
+            
+            let contentHTML = '';
+            
+            if (data.type === 'text') {
+                // Tampilkan teks terenkripsi (Base64) dengan tombol dekripsi
+                contentHTML = `
+                    <p class="text-xs break-all opacity-70">Teks Terenkripsi (Affine+XOR):</p>
+                    <p class="font-mono text-sm break-all">${data.content}</p>
+                    <button class="decrypt-text-btn mt-1 text-xs text-blue-200 hover:underline" data-ciphertext="${data.content}">
+                        Dekripsi Pesan
+                    </button>
+                `;
+            } else if (data.type === 'image') {
+                // Tampilkan path gambar stego dan tombol ekstrak
+                const imageUrl = `/uploads/${data.content}`; // Asumsi /uploads disajikan
+                contentHTML = `
+                    <p class="text-xs opacity-70">Gambar (DWT Stego):</p>
+                    <img src="${imageUrl}" alt="Stego Image" class="max-w-[200px] rounded my-1">
+                    <button class="extract-stego-btn mt-1 text-xs text-blue-200 hover:underline" data-filename="${data.content}">
+                        Ekstrak Pesan dari Gambar
+                    </button>
+                `;
+            } else if (data.type === 'file') {
+                // Tampilkan link download file DES
+                contentHTML = `
+                    <p class="text-xs opacity-70">File Terenkripsi (DES):</p>
+                    <p class="font-mono text-sm">${data.content}</p>
+                    <a href="/decrypt/download_decrypted_file?filename=${data.content}" 
+                       class="mt-1 text-xs text-blue-200 hover:underline" 
+                       target="_blank" download>
+                        Download & Dekripsi File
+                    </a>
+                `;
+            }
+
+            msgDiv.innerHTML = `
+                <div classclass="max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${bgColor}">
+                    <p class="font-bold text-sm">${isMe ? 'Anda' : data.sender_username}</p>
+                    ${contentHTML}
+                    <p class="text-xs opacity-60 mt-1 text-right">${new Date(data.timestamp).toLocaleTimeString()}</p>
+                </div>
+            `;
+            messageBox.appendChild(msgDiv);
+        }
+
+        function scrollToBottom() {
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
+
+        function showNotification(message, type = 'info') {
+            notificationBar.textContent = message;
+            notificationBar.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-blue-500');
+            
+            if (type === 'success') notificationBar.classList.add('bg-green-500');
+            else if (type === 'error') notificationBar.classList.add('bg-red-500');
+            else notificationBar.classList.add('bg-blue-500');
+
+            setTimeout(() => {
+                notificationBar.classList.add('hidden');
+            }, 3000);
+        }
+
+        // --- 8. Event Listener untuk Dekripsi ---
+        messageBox.addEventListener('click', (e) => {
+            if (e.target.classList.contains('decrypt-text-btn')) {
+                const ciphertext = e.target.dataset.ciphertext;
+                callDecryptAPI('/decrypt/text', { data: ciphertext }, (result) => {
+                    showModal(`Hasil Dekripsi Teks:\n\n${result.plaintext || result.error}`);
+                });
+            }
+            
+            if (e.target.classList.contains('extract-stego-btn')) {
+                const filename = e.target.dataset.filename;
+                callDecryptAPI('/decrypt/image_message', { filename: filename }, (result) => {
+                    showModal(`Pesan Tersembunyi:\n\n${result.extracted_message || result.error}`);
+                });
+            }
+            
+            // Link download ditangani oleh tag <a>
+        });
+        
+        closeModalBtn.addEventListener('click', () => {
+            decryptModal.classList.add('hidden');
+        });
+
+        function showModal(resultText) {
+            decryptResult.textContent = resultText;
+            decryptModal.classList.remove('hidden');
+        }
+
+        function callDecryptAPI(endpoint, body, callback) {
+            decryptResult.textContent = 'Mendekripsi...';
+            decryptModal.classList.remove('hidden');
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(response => response.json())
+            .then(data => callback(data))
+            .catch(err => {
+                console.error('Decrypt error:', err);
+                callback({ error: 'Gagal menghubungi server.' });
+            });
+        }
+    });
+</script>
+{% endblock %}
