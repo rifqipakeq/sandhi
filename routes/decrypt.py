@@ -1,6 +1,6 @@
 # /routes/decrypt.py
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, session
-from encryption.affine_xor import decrypt_text_super
+from encryption.affine_xor import decrypt_text_super, encrypt_text_super
 from encryption.des_file import decrypt_file_des
 from encryption.dwt_stego import stego_extract_dwt
 import os
@@ -20,6 +20,15 @@ def decrypt_text():
         
     plaintext = decrypt_text_super(ciphertext_b64)
     return jsonify({'plaintext': plaintext})
+
+@decrypt_bp.route('/encrypt/text', methods=['POST'])
+def encrypt_text():
+    plaintext = request.json.get('data')
+    if not plaintext:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    ciphertext = encrypt_text_super(plaintext)
+    return jsonify({'ciphertext': ciphertext})
 
 @decrypt_bp.route('/image_message', methods=['POST'])
 def decrypt_image_message():

@@ -2,7 +2,7 @@
 from flask import request, session
 from flask_socketio import emit, join_room, leave_room
 from models import db, Message, User
-from encryption.affine_xor import encrypt_text_super
+# from encryption.affine_xor import encrypt_text_super
 
 def register_socket_handlers(socketio, clients):
 
@@ -47,14 +47,15 @@ def register_socket_handlers(socketio, clients):
         plaintext = data['message']
         
         # 1. Enkripsi pesan (Super Encryption)
-        encrypted_text = encrypt_text_super(plaintext)
+        # encrypted_text = encrypt_text_super(plaintext)
         
         # 2. Simpan ke database
         new_message = Message(
             sender_id=sender_id,
             receiver_id=recipient_id,
             message_type='text',
-            encrypted_content=encrypted_text
+            # encrypted_content=encrypted_text
+            encrypted_content=plaintext
         )
         db.session.add(new_message)
         db.session.commit()
@@ -63,7 +64,7 @@ def register_socket_handlers(socketio, clients):
         message_data = {
             'sender_username': sender_username,
             'type': 'text',
-            'content': encrypted_text, # Kirim teks terenkripsi
+            'content': plaintext, # Kirim teks terenkripsi
             'timestamp': new_message.timestamp.isoformat()
         }
 
@@ -96,6 +97,7 @@ def register_socket_handlers(socketio, clients):
                 'sender_username': sender.username,
                 'type': msg.message_type,
                 'content': msg.encrypted_content,
+                'original_filename': msg.original_filename,
                 'timestamp': msg.timestamp.isoformat()
             })
             

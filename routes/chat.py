@@ -1,5 +1,5 @@
 # /routes/chat.py
-from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify, current_app
+from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify, current_app, send_from_directory, abort
 from models import db, User, Message
 from werkzeug.utils import secure_filename
 import os
@@ -113,3 +113,19 @@ def upload_file():
         if os.path.exists(raw_path):
             os.remove(raw_path)
         return jsonify({'error': str(e)}), 500
+    
+@chat_bp.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """
+    Menyajikan file yang di-upload dari folder UPLOAD_FOLDER.
+    Ini penting agar <img src="..."> dapat berfungsi.
+    """
+    # Cek login sudah otomatis ditangani oleh @chat_bp.before_request
+    try:
+        return send_from_directory(
+            current_app.config['UPLOAD_FOLDER'],
+            filename,
+            as_attachment=False # False = tampilkan di browser (untuk <img>)
+        )
+    except FileNotFoundError:
+        abort(404)

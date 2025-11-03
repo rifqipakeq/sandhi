@@ -3,8 +3,6 @@ from Crypto.Cipher import DES
 from Crypto.Util.Padding import pad, unpad
 import base64
 
-# Kunci DES HARUS 8 byte (64 bit).
-# PERINGATAN: DES tidak aman.
 DES_KEY = b'12345678' # Contoh kunci 8 byte
 
 def encrypt_file_des(file_data: bytes) -> bytes:

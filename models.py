@@ -34,6 +34,8 @@ class Message(db.Model):
     
     # Menyimpan teks terenkripsi (Base64) ATAU path ke file/gambar terenkripsi
     encrypted_content = db.Column(db.Text, nullable=False)
+
+    original_filename = db.Column(db.String(255), nullable=True)
     
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
