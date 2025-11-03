@@ -60,7 +60,7 @@ def upload_file():
                 file_data = f.read()
             encrypted_data = encrypt_file_des(file_data)
             
-            encrypted_path = raw_path + ".des" # Simpan file terenkripsi
+            encrypted_path = raw_path # Simpan file terenkripsi
             with open(encrypted_path, 'wb') as f:
                 f.write(encrypted_data)
             message_type = 'file'

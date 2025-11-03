@@ -6,12 +6,9 @@ import base64
 
 # Kunci ini HARUS 16 byte (128 bit) dan RAHASIA.
 # Ganti dengan kunci Anda sendiri, idealnya simpan di .env
-BLOWFISH_KEY = b'MySecretKey12345' # Contoh kunci 16 byte
+BLOWFISH_KEY = b'ABCDEFGHIJKLMNOP' # Contoh kunci 16 byte
 
 def encrypt_blowfish(data: str) -> str:
-    """
-    Encrypts data using Blowfish (CBC mode) for database storage.
-    """
     try:
         cipher = Blowfish.new(BLOWFISH_KEY, Blowfish.MODE_CBC)
         data_bytes = data.encode('utf-8')
@@ -25,9 +22,6 @@ def encrypt_blowfish(data: str) -> str:
         return ""
 
 def decrypt_blowfish(encrypted_data_b64: str) -> str:
-    """
-    Decrypts Blowfish (CBC mode) encrypted data from database.
-    """
     try:
         encrypted_data = base64.b64decode(encrypted_data_b64)
         iv = encrypted_data[:Blowfish.block_size]
@@ -36,4 +30,4 @@ def decrypt_blowfish(encrypted_data_b64: str) -> str:
         decrypted_data = unpad(cipher.decrypt(ct), Blowfish.block_size)
         return decrypted_data.decode('utf-8')
     except (ValueError, KeyError, TypeError):
-        return "Decryption Failed" # Gagal dekripsi (mungkin data korup/kunci salah)
+        return "Decryption Blowfish Failed" # Gagal dekripsi (mungkin data korup/kunci salah)

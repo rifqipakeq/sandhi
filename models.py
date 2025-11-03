@@ -1,4 +1,5 @@
 # /models.py
+'''berfungsi untuk mengolah data baru baik user atau message sebelum di masukan ke database'''
 from flask_sqlalchemy import SQLAlchemy
 from encryption.blowfish_db import encrypt_blowfish, decrypt_blowfish
 import datetime

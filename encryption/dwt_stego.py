@@ -3,8 +3,8 @@ import numpy as np
 import pywt
 from PIL import Image
 
+# ubah pesan menjadi list bit
 def _to_bits(message: str) -> list:
-    """Mengubah string pesan menjadi list bit."""
     bits = []
     for char in message:
         bin_val = bin(ord(char))[2:].zfill(8)
@@ -13,8 +13,8 @@ def _to_bits(message: str) -> list:
     bits.extend([0] * 8)
     return bits
 
+# ubah list menjadi string
 def _from_bits(bits: list) -> str:
-    """Mengubah list bit kembali menjadi string."""
     chars = []
     for i in range(0, len(bits), 8):
         byte_bits = bits[i:i+8]
@@ -26,33 +26,49 @@ def _from_bits(bits: list) -> str:
     return "".join(chars)
 
 def _embed_bits_to_coeffs(coeffs, bits):
-    """Menyisipkan bit ke koefisien DWT menggunakan LSB."""
-    coeffs_flat = coeffs.flatten()
+    """
+    Menyisipkan bit ke koefisien DWT menggunakan LSB.
+    (VERSI PERBAIKAN: Bekerja pada integer)
+    """
+    # 1. Konversi float ke integer
+    coeffs_int = np.round(coeffs).astype(np.int32)
+    coeffs_flat = coeffs_int.flatten()
+
     if len(bits) > len(coeffs_flat):
         raise ValueError("Pesan terlalu besar untuk disembunyikan di sub-band gambar ini.")
     
     for i, bit in enumerate(bits):
-        # Ubah LSB dari koefisien
+        # 2. Lakukan LSB pada integer
         coeffs_flat[i] = (coeffs_flat[i] & ~1) | bit
     
-    return coeffs_flat.reshape(coeffs.shape)
+    # 3. Ubah kembali ke float untuk Inverse DWT
+    return coeffs_flat.reshape(coeffs.shape).astype(np.float32)
 
 def _extract_bits_from_coeffs(coeffs, max_len):
-    """Mengekstrak bit LSB dari koefisien DWT."""
+    """
+    Mengekstrak bit LSB dari koefisien DWT.
+    (VERSI PERBAIKAN: Bekerja pada integer)
+    """
     bits = []
-    coeffs_flat = coeffs.flatten()
+    # 1. Konversi float ke integer (harus konsisten)
+    coeffs_int = np.round(coeffs).astype(np.int32)
+    coeffs_flat = coeffs_int.flatten()
+    
     for i in range(max_len):
+        # 2. Ekstrak LSB dari integer
         bits.append(int(coeffs_flat[i]) & 1)
+        
         # Cek delimiter
         if len(bits) >= 8 and sum(bits[-8:]) == 0:
             break
+            
+    if len(bits) < 8:
+        return [] # Tidak ada delimiter ditemukan
+        
     return bits[:-8] # Hapus delimiter
 
+# hidden secret message to image with dwt-stegano
 def stego_embed_dwt(image_path: str, message: str) -> str:
-    """
-    Menyembunyikan pesan teks ke dalam gambar menggunakan DWT-Steganography.
-    Mengembalikan path ke gambar stego.
-    """
     try:
         img = Image.open(image_path).convert('YCbCr')
         img_data = np.array(img, dtype=np.float32)
