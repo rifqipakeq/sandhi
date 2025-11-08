@@ -31,12 +31,10 @@ def decrypt_xor(data_bytes: bytes, key_str: str) -> bytes:
     return encrypt_xor(data_bytes, key_str)
 
 # --- Fungsi Super Encryption ---
-
 def encrypt_text_super(plaintext: str) -> str:
     text_bytes = plaintext.encode('utf-8')
     affine_encrypted = encrypt_affine(text_bytes)
     xor_encrypted = encrypt_xor(affine_encrypted, XOR_KEY)
-    # Gunakan Base64 agar aman ditransfer (misal via JSON/SocketIO)
     return base64.b64encode(xor_encrypted).decode('utf-8')
 
 def decrypt_text_super(ciphertext_b64: str) -> str:

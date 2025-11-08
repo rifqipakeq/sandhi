@@ -2,393 +2,438 @@
 {% block title %}Secure Chat Room{% endblock %}
 
 {% block content %}
-<div class="flex h-screen overflow-hidden bg-gray-100" style="height: 95vh;">
-    <div class="w-1/3 border-r border-gray-300 bg-white overflow-y-auto">
-        <div class="p-4 border-b">
-            <h2 class="text-xl font-semibold">Pengguna</h2>
-            <p class="text-sm text-gray-600">Online: <span id="online-count">0</span></p>
-        </div>
-        <div id="user-list">
-            {% for user in users %}
-            <div id="user-{{ user.id }}" data-userid="{{ user.id }}" data-username="{{ user.username }}"
-                 class="flex items-center p-4 cursor-pointer hover:bg-gray-100 border-b user-item">
-                <div class="relative">
-                    <span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-gray-400 border-2 border-white user-status-indicator"></span>
-                    <img class="w-10 h-10 rounded-full" src="https://ui-avatars.com/api/?name={{ user.username }}&background=random" alt="{{ user.username }}">
+<div class="flex h-screen overflow-hidden p-4">
+    <div class="flex w-full h-full max-w-6xl mx-auto bg-black/20 backdrop-blur-md shadow-2xl rounded-xl border border-white/20 overflow-hidden">
+        
+        <div class="flex flex-col w-1/3 border-r border-white/10 bg-white/5">
+            <div class="p-4 border-b border-white/10">
+                <h2 class="text-xl font-semibold text-white">Secure Chats</h2>
+                <p class="text-sm text-gray-400">Online: <span id="online-count">0</span></p>
                 </div>
-                <div class="ml-3">
-                    <p class="font-semibold">{{ user.username }}</p>
+            
+            <div id="user-list" class="flex-1 overflow-y-auto">
+                {% for user in users %}
+                <div id="user-{{ user.id }}" data-userid="{{ user.id }}" data-username="{{ user.username }}"
+                     class="flex items-center p-4 cursor-pointer hover:bg-white/10 border-b border-white/5 transition-colors duration-150 user-item">
+                    <div class="relative">
+                        <span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-gray-500 border-2 border-gray-800 user-status-indicator"></span>
+                        <img class="w-10 h-10 rounded-full" src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&color=fff" alt="{{ user.username }}">
+                    </div>
+                    <div class="ml-3">
+                        <p class="font-semibold text-white">{{ user.username }}</p>
+                    </div>
+                    <span id="notif-{{ user.id }}" class="hidden ml-auto w-3 h-3 bg-red-500 rounded-full"></span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="p-4 bg-black/20 border-t border-white/10 flex justify-between items-center">
+                <p class="font-semibold text-sm">Login: <span class="text-blue-400">{{ current_user }}</span></p>
+                <a href="{{ url_for('auth.logout') }}" class="text-sm text-red-400 hover:text-red-300 hover:underline">Logout</a>
+            </div>
+        </div>
+
+        <div class="flex flex-col w-2/3 bg-gray-800/50">
+            <div class="p-4 border-b border-white/10 bg-white/5 shadow-sm">
+                <h2 id="chat-with-username" class_name="text-xl font-semibold text-white">Pilih pengguna untuk memulai chat</h2>
+            </div>
+
+            <div id="message-box" class="flex-1 p-4 overflow-y-auto space-y-4">
+                <div id="chat-placeholder" class="text-center text-gray-400 mt-10">
+                    <svg class="w-16 h-16 mx-auto text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    <p class="mt-2">Pilih pengguna di sebelah kiri untuk memulai percakapan aman.</p>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-        <div class="absolute bottom-0 w-1/3 p-4 bg-gray-200 border-t">
-            <p class="font-semibold">Login sebagai: {{ current_user }}</p>
-            <a href="{{ url_for('auth.logout') }}" class="text-sm text-red-600 hover:underline">Logout</a>
-        </div>
-    </div>
 
-    <div class="flex flex-col w-2/3">
-        <div class="p-4 border-b bg-white shadow-sm">
-            <h2 id="chat-with-username" class="text-xl font-semibold">Pilih pengguna untuk memulai chat</h2>
-        </div>
+            <div id="notification-bar" class="hidden p-2 text-sm text-center text-white bg-green-500 transition-all duration-300"></div>
 
-        <div id="message-box" class="flex-1 p-4 overflow-y-auto bg-gradient-to-br from-blue-50 to-purple-50">
-            <div class="text-center text-gray-500">Pilih pengguna di sebelah kiri.</div>
-        </div>
-
-        <div id="notification-bar" class="hidden p-2 text-sm text-center text-white bg-green-500"></div>
-
-        <div id="input-area" class="hidden p-4 bg-white border-t">
-            <form id="message-form" class="flex items-center">
-                <input id="message-input" type="text" placeholder="Ketik pesan terenkripsi..."
-                       class="flex-1 px-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button type="submit"
-                        class="px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-r-md hover:from-blue-600 hover:to-purple-700">
-                    Kirim Teks
-                </button>
-            </form>
-            <form id="upload-form" class="flex items-center mt-2 space-x-2">
-                <input type="file" id="file-input" class="flex-1 text-sm">
+            <div id="input-area" class="hidden p-4 bg-black/20 border-t border-white/10">
                 
-                <input type="text" id="stego-message" placeholder="Pesan untuk disembunyikan (opsional)" class="hidden px-2 py-1 text-sm border rounded">
+                <div id="upload-options" class="hidden flex space-x-2 mb-2 transition-all duration-300">
+                    <input type="file" id="file-input" class="flex-1 text-sm text-gray-900
+                       file:mr-4 file:py-2 file:px-4
+                       file:rounded-full file:border-0
+                       file:text-sm file:font-semibold
+                       file:bg-purple-600 file:text-white
+                       hover:file:bg-purple-700
+                       cursor-pointer">
+                    <input type="text" id="stego-message" class="flex-1 p-2 rounded-md border border-gray-300 
+                    text-black placeholder-black bg-white focus:outline-none" placeholder="Pesan untuk disembunyikan..." ... >
+                    
+                    <button id="upload-image-btn" title="Upload Gambar (Stego)" class="flex items-center px-3 py-1 text-sm text-white bg-green-600 rounded-md hover:bg-green-700">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6l.01.01"></path></svg>
+                        Stego
+                    </button>
+                    <button id="upload-file-btn" title="Upload File (DES)" class="flex items-center px-3 py-1 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        DES
+                    </button>
+                </div>
                 
-                <button type="button" id="upload-image-btn"
-                        class="px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600">
-                    Upload Gambar (Stego)
-                </button>
-                <button type="button" id="upload-file-btn"
-                        class="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600">
-                    Upload File (DES)
-                </button>
-            </form>
+                <form id="message-form" class="flex items-center space-x-2">
+                    <button type="button" id="toggle-upload-btn" title="Upload File"
+                            class="p-2 text-gray-400 rounded-full hover:bg-gray-700 hover:text-gray-200 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a4 4 0 00-5.656-5.656l-6.415 6.415a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                    </button>
+                    
+                    <input id="message-input" type="text" placeholder="Ketik pesan..."
+                           class="flex-1 px-4 py-2 text-gray-200 bg-gray-700 border border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    
+                    <button type="submit" title="Kirim Pesan"
+                            class="p-2 text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-full hover:from-blue-600 hover:to-purple-700 transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    </button>
+                </form>
+            </div>
         </div>
-    </div>
-</div>
-
-<div id="decrypt-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
-    <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
-        <h3 class="text-lg font-semibold">Hasil Dekripsi</h3>
-        <p id="decrypt-result" class="mt-2 p-4 bg-gray-100 rounded min-h-[50px] whitespace-pre-wrap"></p>
-        <button id="close-modal-btn" class="w-full px-4 py-2 mt-4 text-white bg-gray-500 rounded hover:bg-gray-600">Tutup</button>
     </div>
 </div>
 
+<div id="decrypt-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 transition-opacity duration-300 opacity-0 hidden" style="pointer-events: none;">
+    <div id="modal-content" class="w-full max-w-md p-6 bg-gray-800 rounded-lg shadow-xl border border-white/20 transition-all duration-300 transform scale-95 opacity-0">
+        <h3 class="text-lg font-semibold text-white">Hasil Kriptografi</h3>
+        <p class="mt-2 text-xs text-gray-400">Hasil dari proses enkripsi/dekripsi/ekstraksi:</p>
+        <div id="decrypt-result" class="mt-2 p-4 bg-gray-900 rounded min-h-[100px] text-gray-200 text-sm whitespace-pre-wrap font-mono break-all"></div>
+        <button id="close-modal-btn" class="w-full px-4 py-2 mt-4 text-white bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">Tutup</button>
+    </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const socket = io();
-            const myUsername = "{{ current_user }}";
-            let activeChatUserID = null;
-            let activeChatUsername = null;
 
-            const userList = document.getElementById('user-list');
-            const messageBox = document.getElementById('message-box');
-            const messageForm = document.getElementById('message-form');
-            const messageInput = document.getElementById('message-input');
-            const chatWithUsername = document.getElementById('chat-with-username');
-            const inputArea = document.getElementById('input-area');
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const socket = io();
+        const myUsername = "{{ current_user }}";
+        let activeChatUserID = null;
+        let activeChatUsername = null;
+
+        // --- Cache Elemen UI ---
+        const userList = document.getElementById('user-list');
+        const messageBox = document.getElementById('message-box');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const chatWithUsername = document.getElementById('chat-with-username');
+        const inputArea = document.getElementById('input-area');
+        const chatPlaceholder = document.getElementById('chat-placeholder');
+        
+        // Form Upload (Interaktif Baru)
+        const toggleUploadBtn = document.getElementById('toggle-upload-btn');
+        const uploadOptions = document.getElementById('upload-options');
+        const fileInput = document.getElementById('file-input');
+        const stegoMessageInput = document.getElementById('stego-message');
+        const uploadImageBtn = document.getElementById('upload-image-btn');
+        const uploadFileBtn = document.getElementById('upload-file-btn');
+        
+        // Notifikasi
+        const notificationBar = document.getElementById('notification-bar');
+        
+        // Modal (Interaktif Baru)
+        const decryptModal = document.getElementById('decrypt-modal');
+        const modalContent = document.getElementById('modal-content');
+        const decryptResult = document.getElementById('decrypt-result');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // --- 1. Koneksi SocketIO ---
+        socket.on('connect', () => console.log('Connected to server'));
+
+        socket.on('update_user_list', (data) => {
+            console.log('User list updated:', data.online_users);
+            const onlineUsers = data.online_users;
+            document.getElementById('online-count').textContent = onlineUsers.length;
             
-            // Form Upload
-            const uploadForm = document.getElementById('upload-form');
-            const fileInput = document.getElementById('file-input');
-            const stegoMessageInput = document.getElementById('stego-message');
-            const uploadImageBtn = document.getElementById('upload-image-btn');
-            const uploadFileBtn = document.getElementById('upload-file-btn');
-            
-            // Notifikasi
-            const notificationBar = document.getElementById('notification-bar');
-            
-            // Modal
-            const decryptModal = document.getElementById('decrypt-modal');
-            const decryptResult = document.getElementById('decrypt-result');
-            const closeModalBtn = document.getElementById('close-modal-btn');
-
-            // --- 1. Koneksi SocketIO ---
-            socket.on('connect', () => {
-                console.log('Connected to server');
-            });
-
-            socket.on('update_user_list', (data) => {
-                console.log('User list updated:', data.online_users);
-                const onlineUsers = data.online_users;
-                document.getElementById('online-count').textContent = onlineUsers.length;
-                
-                // Update indikator status
-                document.querySelectorAll('.user-item').forEach(item => {
-                    const userId = parseInt(item.dataset.userid, 10);
-                    const indicator = item.querySelector('.user-status-indicator');
-                    if (onlineUsers.includes(userId)) {
-                        indicator.classList.remove('bg-gray-400');
-                        indicator.classList.add('bg-green-500'); // Online
-                    } else {
-                        indicator.classList.remove('bg-green-500');
-                        indicator.classList.add('bg-gray-400'); // Offline
-                    }
-                });
-            });
-
-            // --- 2. Memilih Pengguna untuk Chat ---
-            userList.addEventListener('click', (e) => {
-                const userItem = e.target.closest('.user-item');
-                if (userItem) {
-                    activeChatUserID = userItem.dataset.userid;
-                    activeChatUsername = userItem.dataset.username;
-                    
-                    chatWithUsername.textContent = `Chat dengan ${activeChatUsername}`;
-                    inputArea.classList.remove('hidden');
-                    messageBox.innerHTML = '<div class="text-center text-gray-500">Memuat riwayat chat...</div>';
-                    
-                    // Reset highlight
-                    document.querySelectorAll('.user-item').forEach(item => item.classList.remove('bg-blue-100'));
-                    userItem.classList.add('bg-blue-100');
-                    
-                    // Minta riwayat chat
-                    socket.emit('request_chat_history', { other_user_id: activeChatUserID });
+            document.querySelectorAll('.user-item').forEach(item => {
+                const userId = parseInt(item.dataset.userid, 10);
+                const indicator = item.querySelector('.user-status-indicator');
+                if (onlineUsers.includes(userId)) {
+                    indicator.classList.remove('bg-gray-500', 'border-gray-800');
+                    indicator.classList.add('bg-green-400', 'border-gray-900'); // Online
+                } else {
+                    indicator.classList.remove('bg-green-400', 'border-gray-900');
+                    indicator.classList.add('bg-gray-500', 'border-gray-800'); // Offline
                 }
             });
+        });
 
-            // --- 3. Menerima Riwayat Chat ---
-            socket.on('chat_history', (history) => {
-                messageBox.innerHTML = ''; // Hapus "memuat..."
-                history.forEach(msg => appendMessage(msg));
+        // --- 2. Memilih Pengguna untuk Chat ---
+        userList.addEventListener('click', (e) => {
+            const userItem = e.target.closest('.user-item');
+            if (userItem) {
+                activeChatUserID = userItem.dataset.userid;
+                activeChatUsername = userItem.dataset.username;
+                
+                chatWithUsername.textContent = `Chat dengan ${activeChatUsername}`;
+                inputArea.classList.remove('hidden');
+                messageBox.innerHTML = '<div class="text-center text-gray-500">Memuat riwayat chat...</div>';
+                chatPlaceholder.classList.add('hidden'); // Sembunyikan placeholder
+                
+                // Reset highlight
+                document.querySelectorAll('.user-item').forEach(item => item.classList.remove('bg-blue-600', 'text-white'));
+                userItem.classList.add('bg-blue-600', 'text-white'); // Highlight aktif
+                
+                // Reset notifikasi
+                const notif = document.getElementById(`notif-${activeChatUserID}`);
+                if (notif) notif.classList.add('hidden');
+                
+                socket.emit('request_chat_history', { other_user_id: activeChatUserID });
+            }
+        });
+
+        // --- 3. Menerima Riwayat Chat ---
+        socket.on('chat_history', (history) => {
+            messageBox.innerHTML = '';
+            if (history.length === 0) {
+                 messageBox.innerHTML = '<div class="text-center text-gray-500">Belum ada pesan. Mulailah percakapan!</div>';
+            } else {
+                history.forEach(msg => appendMessage(msg, true)); // 'true' = load instan
+            }
+            scrollToBottom();
+        });
+
+        // --- 4. Menerima Pesan Baru ---
+        socket.on('new_message', (data) => {
+            const senderUserId = data.sender_id; // (Asumsi) Anda perlu menambahkan ini di backend
+            
+            if ( (data.sender_username === myUsername && activeChatUsername !== null) || 
+                 (data.sender_username === activeChatUsername) ) 
+            {
+                appendMessage(data, false); // 'false' = animasikan
                 scrollToBottom();
+            } else {
+                // Tampilkan notifikasi visual di daftar user
+                showNotification(`Pesan baru dari ${data.sender_username}`, 'info');
+                const notif = document.getElementById(`notif-${senderUserId}`); // Anda perlu ID pengirim di sini
+                if(notif) notif.classList.remove('hidden');
+            }
+        });
+
+        // --- 5. Mengirim Pesan Teks ---
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value;
+            if (!message || !activeChatUserID) return;
+
+            socket.emit('send_message', {
+                recipient_id: activeChatUserID,
+                message: message
             });
+            messageInput.value = '';
+        });
+        
+        // --- 6. Interaksi Upload (Baru) ---
+        toggleUploadBtn.addEventListener('click', () => {
+            uploadOptions.classList.toggle('hidden');
+            // Tampilkan input stego hanya jika file adalah gambar
+            if (!uploadOptions.classList.contains('hidden')) {
+                stegoMessageInput.classList.add('hidden');
+            }
+        });
 
-            // --- 4. Menerima Pesan Baru ---
-            socket.on('new_message', (data) => {
-                console.log('New message received:', data);
-                // Hanya tampilkan jika chat sedang aktif
-                const senderId = data.sender_username === myUsername ? activeChatUserID : null; // Logika ini perlu disesuaikan
-                
-                // Cara mudah: Cek jika pengirim atau penerima adalah kita, dan yang lain adalah user aktif
-                if ( (data.sender_username === myUsername && activeChatUsername !== null) || 
-                    (data.sender_username === activeChatUsername) ) 
-                {
-                    appendMessage(data);
-                    scrollToBottom();
-                } else {
-                    showNotification(`Pesan baru dari ${data.sender_username}`, 'info');
-                    // Tambahkan notifikasi visual ke daftar user
-                    const userItem = document.getElementById(`user-${data.sender_id}`); // Ini perlu ID pengirim
-                    if(userItem) userItem.classList.add('font-bold');
-                }
-            });
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file && file.type.startsWith('image/')) {
+                stegoMessageInput.classList.remove('hidden');
+            } else {
+                stegoMessageInput.classList.add('hidden');
+            }
+        });
 
-            // --- 5. Mengirim Pesan Teks ---
-            messageForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const message = messageInput.value;
-                if (!message || !activeChatUserID) return;
+        uploadImageBtn.addEventListener('click', () => handleUpload('image'));
+        uploadFileBtn.addEventListener('click', () => handleUpload('file'));
 
-                // Client HANYA mengirim data mentah
-                // Server akan mengenkripsi dan menyimpannya (sesuai /websocket/chat_ws.py)
-                socket.emit('send_message', {
-                    recipient_id: activeChatUserID,
-                    message: message
-                });
-                messageInput.value = '';
-            });
-            
-            // --- 6. Mengirim File/Gambar (Upload) ---
-            fileInput.addEventListener('change', () => {
-                // Tampilkan input stego jika file adalah gambar
-                const file = fileInput.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    stegoMessageInput.classList.remove('hidden');
-                } else {
-                    stegoMessageInput.classList.add('hidden');
-                }
-            });
-            
-            uploadImageBtn.addEventListener('click', () => handleUpload('image'));
-            uploadFileBtn.addEventListener('click', () => handleUpload('file'));
-
-            function handleUpload(type) {
-                const file = fileInput.files[0];
-                if (!file || !activeChatUserID) {
-                    alert('Pilih file dan penerima.');
-                    return;
-                }
-
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('type', type);
-                formData.append('recipient_id', activeChatUserID);
-                
-                if (type === 'image') {
-                    formData.append('stego_message', stegoMessageInput.value || 'Pesan Rahasia');
-                }
-
-                fetch('/chat/upload_file', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showNotification(`File terenkripsi ${data.path} terkirim!`, 'success');
-                        // Pesan akan muncul via WebSocket (diterima dari server)
-                    } else {
-                        showNotification(`Error: ${data.error}`, 'error');
-                    }
-                    // Reset form upload
-                    uploadForm.reset();
-                    stegoMessageInput.classList.add('hidden');
-                })
-                .catch(err => {
-                    console.error('Upload error:', err);
-                    showNotification('Upload Gagal.', 'error');
-                });
+        function handleUpload(type) {
+            const file = fileInput.files[0];
+            if (!file || !activeChatUserID) {
+                alert('Pilih file dan penerima.');
+                return;
             }
 
-            // --- 7. Fungsi Helper (Tampilan UI) ---
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+            formData.append('recipient_id', activeChatUserID);
             
-            function appendMessage(data) {
-                const isMe = data.sender_username === myUsername;
-                const align = isMe ? 'justify-end' : 'justify-start';
-                const bgColor = isMe ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-white text-gray-800 shadow-sm';
-                
-                const msgDiv = document.createElement('div');
-                msgDiv.className = `flex ${align} mb-3`;
-                
-                let contentHTML = '';
-                
-                if (data.type === 'text') {
-                    // Tampilkan teks terenkripsi (Base64) dengan tombol dekripsi
-                    contentHTML = `
-                        <p class="text-xs break-all opacity-70">Teks Terenkripsi (Affine+XOR):</p>
-                        <p class="font-mono text-sm break-all">${data.content}</p>
-                        <button class="encrypt-text-btn mt-1 text-xs text-blue-200 hover:underline" data-ciphertext="${data.content}">
-                            Lihat Versi Enkripsi (Affine + XOR)
-                        </button>
-                    `;
-                } else if (data.type === 'image') {
-                    // Tampilkan path gambar stego dan tombol ekstrak
-                    // const imageUrl = `/uploads/${data.content}`; 
-                    const imageUrl = `/chat/uploads/${data.content}`
-                    contentHTML = `
-                        <p class="text-xs opacity-70">Gambar (DWT Stego):</p>
-                        <img src="${imageUrl}" alt="Stego Image" class="max-w-[200px] rounded my-1">
-                        <button class="extract-stego-btn mt-1 text-xs text-blue-200 hover:underline" data-filename="${data.content}">
-                            Ekstrak Pesan dari Gambar
-                        </button>
-                    `;
-                // } else if (data.type === 'file') {
-                //     // Tampilkan link download file DES
-                //     const displayName = data.original_filename || data.content;
-                //     contentHTML = `
-                //         <p class="text-xs opacity-70">File Terenkripsi (DES):</p>
-                //         <p class="font-mono text-sm">${data.content}</p>
-                //         <a href="/decrypt/download_decrypted_file?filename=${data.content}" 
-                //         class="mt-1 text-xs text-blue-200 hover:underline" 
-                //         target="_blank" download>
-                //             Download & Dekripsi File
-                //         </a>
-                //     `;
-                // }
-                } else if (data.type === 'file') {
+            if (type === 'image') {
+                formData.append('stego_message', stegoMessageInput.value || 'Pesan Rahasia');
+            }
+
+            // Tampilkan notifikasi "Uploading..."
+            showNotification('Mengenkripsi & Mengupload file...', 'info');
+
+            fetch('/chat/upload_file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification(`File terkirim!`, 'success');
+                } else {
+                    showNotification(`Error: ${data.error}`, 'error');
+                }
+                // Reset form upload
+                fileInput.value = '';
+                stegoMessageInput.value = '';
+                uploadOptions.classList.add('hidden');
+                stegoMessageInput.classList.add('hidden');
+            })
+            .catch(err => {
+                console.error('Upload error:', err);
+                showNotification('Upload Gagal.', 'error');
+            });
+        }
+
+        // --- 7. Fungsi Helper (Tampilan UI) ---
+        
+        function appendMessage(data, instant = false) {
+            const isMe = data.sender_username === myUsername;
+            const align = isMe ? 'justify-end' : 'justify-start';
+            const bgColor = isMe ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-gray-700 text-gray-200';
+            const animation = instant ? '' : (isMe ? 'animate-slide-in-right' : 'animate-slide-in-left');
+
+            const msgDiv = document.createElement('div');
+            // Tambahkan animasi fade-in sederhana
+            msgDiv.className = `flex ${align} opacity-0 transition-opacity duration-500`;
+            
+            let contentHTML = '';
+            
+            if (data.type === 'text') {
+                contentHTML = `
+                    <p class="text-sm break-all">${data.content}</p>
+                    <button class="encrypt-text-btn mt-2 flex items-center text-xs text-blue-300 hover:text-blue-200 hover:underline" data-plaintext="${data.content}">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        Lihat Versi Enkripsi
+                    </button>
+                `;
+            } else if (data.type === 'image') { // Stego
+                const originalImageUrl = `/chat/uploads/${data.original_filename}`;
+                const stegoFilename = data.content; 
+                contentHTML = `
+                    <p class="text-xs text-gray-400 mb-1">Gambar (Stego DWT):</p>
+                    <img src="${originalImageUrl}" alt="Original Image" class="max-w-[250px] rounded my-1 cursor-pointer" onclick="window.open('${originalImageUrl}', '_blank')">
+                    <button class="extract-stego-btn mt-2 flex items-center text-xs text-blue-300 hover:text-blue-200 hover:underline" data-filename="${stegoFilename}">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        Ekstrak Pesan
+                    </button>
+                `;
+            } else if (data.type === 'file') { // DES
                 const displayName = data.original_filename || data.content;
                 const encryptedFilename = data.content;
-                
-                // Cek apakah file ini adalah gambar berdasarkan ekstensi
                 const isImage = /\.(jpe?g|png|gif|bmp)$/i.test(displayName);
                 
                 let fileDisplayHTML = '';
                 if (isImage) {
-                    // Jika gambar, tampilkan <img> yang menunjuk ke endpoint dekripsi baru
+                    const viewUrl = `/decrypt/view_file?filename=${encryptedFilename}`;
                     fileDisplayHTML = `
-                        <img src="/decrypt/view_file?filename=${encryptedFilename}" 
-                             alt="Encrypted Image" 
-                             class="max-w-[200px] rounded my-1 border border-gray-300">
+                        <img src="${viewUrl}" alt="Encrypted Image" 
+                             class="max-w-[250px] rounded my-1 border border-gray-600 cursor-pointer"
+                             onclick="window.open('${viewUrl}', '_blank')">
                     `;
                 } else {
-                    // Jika bukan gambar, tampilkan nama filenya
-                    fileDisplayHTML = `<p class="font-mono text-sm">${displayName}</p>`;
+                    fileDisplayHTML = `<p class="font-mono text-sm text-gray-300 bg-gray-900/50 p-2 rounded">${displayName}</p>`;
                 }
                 
                 contentHTML = `
-                    <p class="text-xs opacity-70">File (Enkripsi DES):</p>
+                    <p class="text-xs text-gray-400 mb-1">File (Enkripsi DES):</p>
                     ${fileDisplayHTML}
                     <a href="/decrypt/download_decrypted_file?filename=${encryptedFilename}" 
-                       class="mt-1 text-xs text-blue-200 hover:underline" 
-                       target="_blank"> 
-                        Download & Dekripsi File
+                       class="mt-2 flex items-center text-xs text-blue-300 hover:text-blue-200 hover:underline" 
+                       target="_blank" download>
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download File Terenkripsi
                     </a>
                 `;
             }
 
-                msgDiv.innerHTML = `
-                    <div classclass="max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${bgColor}">
-                        <p class="font-bold text-sm">${isMe ? 'Anda' : data.sender_username}</p>
-                        ${contentHTML}
-                        <p class="text-xs opacity-60 mt-1 text-right">${new Date(data.timestamp).toLocaleTimeString()}</p>
-                    </div>
-                `;
-                messageBox.appendChild(msgDiv);
-            }
-
-            function scrollToBottom() {
-                messageBox.scrollTop = messageBox.scrollHeight;
-            }
-
-            function showNotification(message, type = 'info') {
-                notificationBar.textContent = message;
-                notificationBar.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-blue-500');
-                
-                if (type === 'success') notificationBar.classList.add('bg-green-500');
-                else if (type === 'error') notificationBar.classList.add('bg-red-500');
-                else notificationBar.classList.add('bg-blue-500');
-
-                setTimeout(() => {
-                    notificationBar.classList.add('hidden');
-                }, 3000);
-            }
-
-            // --- 8. Event Listener untuk Dekripsi ---
-            messageBox.addEventListener('click', (e) => {
-                if (e.target.classList.contains('encrypt-text-btn')) {
-                    const plaintext = e.target.previousElementSibling.textContent;
-                    callCryptoAPI('/decrypt/encrypt/text', { data: plaintext }, (result) => {
-                        showModal(`Hasil Enkripsi (Affine + XOR):\n\n${result.ciphertext || result.error}`);
-                    });
-                }
-                
-                if (e.target.classList.contains('extract-stego-btn')) {
-                    const filename = e.target.dataset.filename;
-                    callCryptoAPI('/decrypt/image_message', { filename: filename }, (result) => {
-                        showModal(`Pesan Tersembunyi:\n\n${result.extracted_message || result.error}`);
-                    });
-                }
-                
-                // Link download ditangani oleh tag <a>
-            });
+            msgDiv.innerHTML = `
+                <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-md ${bgColor}">
+                    <p class="font-bold text-sm ${isMe ? 'text-white' : 'text-purple-300'}">${isMe ? 'Anda' : data.sender_username}</p>
+                    <div class="mt-1">${contentHTML}</div>
+                    <p class="text-xs opacity-60 mt-2 text-right">${new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+            `;
+            messageBox.appendChild(msgDiv);
             
-            closeModalBtn.addEventListener('click', () => {
-                decryptModal.classList.add('hidden');
-            });
+            // Terapkan animasi fade-in
+            setTimeout(() => msgDiv.classList.remove('opacity-0'), instant ? 0 : 50);
+        }
 
-            function showModal(resultText) {
-                decryptResult.textContent = resultText;
-                decryptModal.classList.remove('hidden');
+        function scrollToBottom() {
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
+
+        function showNotification(message, type = 'info') {
+            notificationBar.textContent = message;
+            notificationBar.classList.remove('hidden', 'bg-green-600', 'bg-red-600', 'bg-blue-600');
+            
+            if (type === 'success') notificationBar.classList.add('bg-green-600');
+            else if (type === 'error') notificationBar.classList.add('bg-red-600');
+            else notificationBar.classList.add('bg-blue-600');
+
+            setTimeout(() => {
+                notificationBar.classList.add('hidden');
+            }, 3000);
+        }
+
+        // --- 8. Event Listener untuk Modal ---
+        messageBox.addEventListener('click', (e) => {
+            const encryptBtn = e.target.closest('.encrypt-text-btn');
+            if (encryptBtn) {
+                const plaintext = encryptBtn.dataset.plaintext;
+                callCryptoAPI('/decrypt/encrypt/text', { data: plaintext }, (result) => {
+                    showModal(`Hasil Enkripsi (Affine+XOR):\n\n${result.ciphertext || result.error}`);
+                });
             }
-
-            function callCryptoAPI(endpoint, body, callback) {
-                decryptResult.textContent = 'Mendekripsi...';
-                decryptModal.classList.remove('hidden');
-                
-                fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                })
-                .then(response => response.json())
-                .then(data => callback(data))
-                .catch(err => {
-                    console.error('Decrypt error:', err);
-                    callback({ error: 'Gagal menghubungi server.' });
+            
+            const extractBtn = e.target.closest('.extract-stego-btn');
+            if (extractBtn) {
+                const filename = extractBtn.dataset.filename;
+                callCryptoAPI('/decrypt/image_message', { filename: filename }, (result) => {
+                    showModal(`Pesan Tersembunyi (DWT):\n\n${result.extracted_message || result.error}`);
                 });
             }
         });
-    </script>
-    {% endblock %}
+        
+        closeModalBtn.addEventListener('click', () => showModal(null, false));
+        decryptModal.addEventListener('click', (e) => {
+            if (e.target === decryptModal) {
+                showModal(null, false);
+            }
+        });
+
+        function showModal(resultText, show = true) {
+            if (show) {
+                decryptResult.textContent = resultText;
+                decryptModal.classList.remove('hidden');
+                decryptModal.style.pointerEvents = 'auto';
+                setTimeout(() => {
+                    decryptModal.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                }, 10);
+            } else {
+                decryptModal.classList.add('opacity-0');
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    decryptModal.classList.add('hidden');
+                    decryptModal.style.pointerEvents = 'none';
+                }, 300); // Tunggu animasi selesai
+            }
+        }
+
+        function callCryptoAPI(endpoint, body, callback) {
+            decryptResult.textContent = 'Memproses...';
+            showModal('Memproses...', true);
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(response => response.json())
+            .then(data => callback(data))
+            .catch(err => {
+                console.error('Crypto API error:', err);
+                callback({ error: 'Gagal menghubungi server.' });
+            });
+        }
+    });
+</script>
+{% endblock %}

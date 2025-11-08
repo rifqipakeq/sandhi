@@ -4,9 +4,8 @@ from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 import base64
 
-# Kunci ini HARUS 16 byte (128 bit) dan RAHASIA.
-# Ganti dengan kunci Anda sendiri, idealnya simpan di .env
-BLOWFISH_KEY = b'ABCDEFGHIJKLMNOP' # Contoh kunci 16 byte
+# Kunci ini harus 16 bit 
+BLOWFISH_KEY = b'ABCDEFGHIJKLMNOP' 
 
 def encrypt_blowfish(data: str) -> str:
     try:
@@ -15,19 +14,13 @@ def encrypt_blowfish(data: str) -> str:
         padded_data = pad(data_bytes, Blowfish.block_size)
         iv = cipher.iv
         encrypted_data = cipher.encrypt(padded_data)
-        # Mengembalikan IV + data terenkripsi, di-encode ke Base64
         return base64.b64encode(iv + encrypted_data).decode('utf-8')
     except Exception as e:
         print(f"Blowfish Encryption Error: {e}")
         return ""
 
 def decrypt_blowfish(encrypted_data_b64: str) -> str:
-    """
-    Mendekripsi data Blowfish (CBC mode) dari database.
-    (Versi perbaikan: lebih tangguh)
-    """
     if not encrypted_data_b64:
-        # Jika datanya kosong, kembalikan string yang jelas
         return "Decryption Failed (Empty)" 
 
     try:
@@ -38,7 +31,5 @@ def decrypt_blowfish(encrypted_data_b64: str) -> str:
         decrypted_data = unpad(cipher.decrypt(ct), Blowfish.block_size)
         return decrypted_data.decode('utf-8')
     except (ValueError, KeyError, TypeError, base64.binascii.Error) as e:
-        # Tangkap semua kemungkinan error dekripsi/padding/base64
-        # Ini akan menangani kasus di mana data adalah plaintext
         print(f"Blowfish Decryption Error: {e}")
         return "Decryption Failed (Data Corrupt)"
