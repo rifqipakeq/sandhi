@@ -9,7 +9,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False) 
-    _encrypted_profile_data = db.Column(db.String(512))
+    # _encrypted_profile_data = db.Column(db.String(512))   
     _face_descriptors = db.Column(db.Text, nullable=True)
 
 
@@ -20,10 +20,10 @@ class User(db.Model):
             return decrypt_blowfish(self._encrypted_profile_data)
         return None
 
-    @profile_data.setter
-    def profile_data(self, value: str):
-        """Setter untuk mengenkripsi data sebelum disimpan."""
-        self._encrypted_profile_data = encrypt_blowfish(value)
+    # @profile_data.setter
+    # def profile_data(self, value: str):
+    #     """Setter untuk mengenkripsi data sebelum disimpan."""
+    #     self._encrypted_profile_data = encrypt_blowfish(value)
     
     @property
     def face_descriptors(self):
