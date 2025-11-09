@@ -1,12 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
+{% block title %}Register{% endblock %}
+
 {% block content %}
 <div class="flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-md p-8 space-y-6 rounded-2xl shadow-xl bg-white/10 backdrop-blur-md border border-white/20">
-        <h1 class="text-4xl font-bold text-white text-center">Sandhi</h1>
-        <h2 class="text-2xl font-semibold text-center text-gray-200">Register</h2>
+    <div class="w-full max-w-lg p-8 space-y-4 rounded-2xl shadow-xl bg-white/10 backdrop-blur-md border border-white/20">
         
-        <form class="space-y-6" action="{{ url_for('auth.register') }}" method="POST">
+        <h1 class="text-4xl font-bold text-white text-center">Sandhi</h1>
+        <h2 class="text-2xl font-semibold text-center text-gray-200">Registrasi</h2>
+        
+        <form id="register-form" class="space-y-4">
             <div>
                 <label for="username" class="text-sm font-medium text-gray-300">Username</label>
                 <input id="username" name="username" type="text" required
@@ -17,14 +19,177 @@
                 <input id="password" name="password" type="password" required
                        class="w-full px-4 py-2 mt-2 text-gray-200 bg-white/5 border border-white/20 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 focus:bg-white/10">
             </div>
-            <button type="submit"
-                    class="w-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-md shadow-sm hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
+
+            <div class="p-4 border border-white/20 rounded-lg">
+                <h3 class="text-lg font-semibold text-white">Biometrik Wajah</h3>
+                <p class="text-sm text-gray-400">Ambil 5 foto wajah Anda untuk registrasi.</p>
+                
+                <div class="relative w-full max-w-xs mx-auto mt-2 bg-gray-900 rounded-md overflow-hidden aspect-video">
+                    <video id="video-feed" autoplay muted playsinline class="w-full h-full"></video>
+                    <canvas id="overlay-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                </div>
+                
+                <button type="button" id="start-camera-btn" class="w-full mt-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700">Mulai Kamera</button>
+                
+                <div id="capture-area" class="hidden mt-2 space-y-2">
+                    <button type="button" id="capture-btn" class="w-full px-4 py-2 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50" disabled>Ambil Foto</button>
+                    <p id="feedback-text" class="text-center text-yellow-400 text-sm h-4"></p>
+                    <p id="photo-count" class="text-center text-gray-200 text-lg font-bold">Foto Diambil: 0 / 5</p>
+                </div>
+            </div>
+
+            <button type="submit" id="register-btn"
+                    class="w-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-md shadow-sm hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                 Register
             </button>
         </form>
+        
         <p class="text-sm text-center text-gray-400">
             Sudah punya akun? <a href="{{ url_for('auth.login') }}" class="font-medium text-purple-400 hover:text-purple-300">Login</a>
         </p>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='js/face-api.min.js') }}"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Elemen DOM
+        const video = document.getElementById('video-feed');
+        const canvas = document.getElementById('overlay-canvas');
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const captureArea = document.getElementById('capture-area');
+        const captureBtn = document.getElementById('capture-btn');
+        const feedbackText = document.getElementById('feedback-text');
+        const photoCount = document.getElementById('photo-count');
+        const registerForm = document.getElementById('register-form');
+        const registerBtn = document.getElementById('register-btn');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+
+        let collectedDescriptors = [];
+        const requiredPhotos = 5;
+
+        // Path ke model face-api.js
+        const MODEL_URL = '/static/models';
+
+        // Muat model face-api
+        async function loadModels() {
+            feedbackText.textContent = 'Mempersiapkan...';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            feedbackText.textContent = 'Model siap.';
+            captureBtn.disabled = false;
+        }
+
+        // Mulai kamera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                video.srcObject = stream;
+                startCameraBtn.disabled = true;
+                startCameraBtn.textContent = 'Kamera Aktif';
+                captureArea.classList.remove('hidden');
+            } catch (err) {
+                console.error("Error starting camera:", err);
+                feedbackText.textContent = 'Gagal mengakses kamera.';
+            }
+        }
+
+        // Fungsi untuk mengambil foto dan descriptor
+        async function captureFace() {
+            if (collectedDescriptors.length >= requiredPhotos) return;
+
+            feedbackText.textContent = 'Mendeteksi wajah...';
+            captureBtn.disabled = true;
+
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                                           .withFaceLandmarks()
+                                           .withFaceDescriptor();
+            
+            if (detection) {
+                // Wajah terdeteksi!
+                collectedDescriptors.push(detection.descriptor);
+                const count = collectedDescriptors.length;
+                photoCount.textContent = `Foto Diambil: ${count} / ${requiredPhotos}`;
+                feedbackText.textContent = `Foto ${count} berhasil!`;
+
+                // Gambar kotak di wajah
+                const displaySize = { width: video.clientWidth, height: video.clientHeight };
+                faceapi.matchDimensions(canvas, displaySize);
+                const resizedDetections = faceapi.resizeResults(detection, displaySize);
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                
+                if (count === requiredPhotos) {
+                    feedbackText.textContent = 'Pengambilan data wajah selesai. Silakan register.';
+                    captureBtn.textContent = 'Selesai';
+                    registerBtn.disabled = false; 
+                } else {
+                    captureBtn.disabled = false;
+                }
+            } else {
+                feedbackText.textContent = 'Tidak ada wajah terdeteksi. Coba lagi.';
+                captureBtn.disabled = false;
+            }
+        }
+
+        // Fungsi untuk mengirim data ke server
+        async function handleRegister(e) {
+            e.preventDefault();
+            if (collectedDescriptors.length < requiredPhotos) {
+                alert('Anda harus mengambil 5 foto terlebih dahulu.');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Memproses...';
+
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            
+            // Konversi descriptors (Float32Array) ke array standar
+            const descriptorsArray = collectedDescriptors.map(d => Array.from(d));
+            const descriptorsJSON = JSON.stringify(descriptorsArray);
+            
+            try {
+                const response = await fetch('/register_face', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        descriptors: descriptorsJSON
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('Registrasi berhasil! Silakan login.');
+                    window.location.href = "{{ url_for('auth.login') }}";
+                } else {
+                    alert(`Registrasi Gagal: ${result.message}`);
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Register';
+                }
+            } catch (err) {
+                console.error('Error registering:', err);
+                alert('Terjadi kesalahan. Coba lagi.');
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Register';
+            }
+        }
+
+        // Event Listeners
+        startCameraBtn.addEventListener('click', () => {
+            startCamera();
+            loadModels();
+        });
+        
+        captureBtn.addEventListener('click', captureFace);
+        registerForm.addEventListener('submit', handleRegister);
+    });
+</script>
 {% endblock %}

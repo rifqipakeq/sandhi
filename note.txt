@@ -1,0 +1,2 @@
+# folder __pycache__ digunakan untuk menyimpan bytecode hasil kompilasi. walau python interpreter tapi tetap memerlukan bytecode untuk mempercepat eksekusi yang dilakukan oleh PVM
+# folder ini akan muncul bila file terkait di import sebagai modul

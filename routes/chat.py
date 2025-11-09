@@ -51,26 +51,21 @@ def upload_file():
     
     try:
         if upload_type == 'image':
-            # Ini untuk DWT Steganography
+            # DWT Steganography
             message_to_hide = request.form.get('stego_message', 'Pesan rahasia')
-            # encrypted_path = 'uploads/query_orderan_stego.png'
             encrypted_path = stego_embed_dwt(raw_path, message_to_hide)
             message_type = 'image'
-            # Kita biarkan file asli (raw_path) agar bisa ditampilkan
             
         elif upload_type == 'file':
-            # Ini untuk Enkripsi DES
             with open(raw_path, 'rb') as f:
                 file_data = f.read()
             encrypted_data = encrypt_file_des(file_data)
             
-            # encrypted_path = 'uploads/query_orderan.png.des'
             encrypted_path = raw_path + ".des"
             with open(encrypted_path, 'wb') as f:
                 f.write(encrypted_data)
             message_type = 'file'
             
-            # Hapus file asli (raw_path) karena kita hanya perlu versi .des
             os.remove(raw_path)
         
         else:
@@ -83,37 +78,31 @@ def upload_file():
                 os.remove(raw_path)
              return jsonify({'error': 'Encryption failed'}), 500
 
-        # Ini adalah nama file terenkripsi:
-        # misal: 'query_orderan_stego.png' ATAU 'query_orderan.png.des'
         encrypted_filename = os.path.basename(encrypted_path)
 
-        # Simpan path ke DB
         new_message = Message(
             sender_id=session['user_id'],
             receiver_id=recipient_id,
             message_type=message_type,
-            encrypted_content=encrypted_filename, # <-- INI YANG BENAR
-            original_filename=filename            # <-- Nama file asli
+            encrypted_content=encrypted_filename, 
+            original_filename=filename            
         )
         db.session.add(new_message)
         db.session.commit()
         
-        # Kirim notifikasi via WebSocket
         recipient_sid = clients.get(int(recipient_id))
         
         message_data = {
             'sender_username': session['username'],
             'type': message_type,
-            'content': encrypted_filename,      # <-- Nama file terenkripsi
-            'original_filename': filename,        # <-- Nama file asli
+            'content': encrypted_filename,      
+            'original_filename': filename,      
             'timestamp': new_message.timestamp.isoformat()
         }
         
-        # Kirim ke penerima jika online
         if recipient_sid:
             socketio.emit('new_message', message_data, room=recipient_sid)
         
-        # Kirim juga ke diri sendiri (untuk UI)
         my_sid = clients.get(session['user_id'])
         if my_sid:
              socketio.emit('new_message', message_data, room=my_sid)
@@ -121,24 +110,19 @@ def upload_file():
         return jsonify({'status': 'success', 'path': encrypted_filename})
 
     except Exception as e:
-        # Hapus file asli jika gagal
         if os.path.exists(raw_path):
             os.remove(raw_path)
-        print(f"Upload Error: {e}") # Cetak error ke konsol server
+        print(f"Upload Error: {e}") 
         return jsonify({'error': str(e)}), 500
     
 @chat_bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
-    """
-    Menyajikan file yang di-upload dari folder UPLOAD_FOLDER.
-    Ini penting agar <img src="..."> dapat berfungsi.
-    """
-    # Cek login sudah otomatis ditangani oleh @chat_bp.before_request
+
     try:
         return send_from_directory(
             current_app.config['UPLOAD_FOLDER'],
             filename,
-            as_attachment=False # False = tampilkan di browser (untuk <img>)
+            as_attachment=False 
         )
     except FileNotFoundError:
         abort(404)

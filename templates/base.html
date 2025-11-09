@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script type="module">
+    import faceApiWithoutTensorflow from 'https://cdn.jsdelivr.net/npm/face-api-without-tensorflow@1.0.0/+esm'
+    </script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,11 +15,9 @@
     
     <title>{% block title %}Secure Chat{% endblock %}</title>
     <style>
-        /* Terapkan font Inter sebagai font utama */
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Kustomisasi Scrollbar agar sesuai tema gelap */
         ::-webkit-scrollbar {
             width: 6px;
         }
